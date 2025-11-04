@@ -1,0 +1,101 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: ecommerce-backend
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    validate-on-migrate: true
+    clean-disabled: true
+    locations: classpath:db/migration/
+    baseline-description: "Initial schema"
+    baseline-version: 1
+
+  datasource:
+    url: jdbc:postgresql://localhost:5433/e-commerce
+    username: postgres
+    password: Weedkhalifa97
+    driver-class-name: org.postgresql.Driver
+
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+      dialect: org.hibernate.dialect.PostgreSQLDialect
+    show-sql: true
+    generate-ddl: true
+
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      password:
+      timeout: 2000ms
+      repositories:
+        enabled: false
+
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ${MAIL_USERNAME:tranthang160897@gmail.com}
+    password: ${MAIL_PASSWORD:iqfaypmsqmiylhrf}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: ${GOOGLE_CLIENT_ID:your-google-client-id}
+            client-secret: ${GOOGLE_CLIENT_SECRET:your-google-client-secret}
+            redirect-uri: http://localhost:3000/auth/callback/google
+            scope: openid,profile,email
+
+  batch:
+    jdbc:
+      initialize-schema: always
+
+  cache:
+    type: redis
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: when-authorized
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+
+app:
+  jwt:
+    secret: ${JWT_SECRET:22802f27947a800933758d59dcfb05f995317af29a3b0ce1c0e59fae0768662e}
+    expiration: 86400000 # 24 hours
+    refresh-expiration: 604800000 # 7 days
+
+  stripe:
+    public-key: ${STRIPE_PUBLIC_KEY:pk_test_...}
+    secret-key: ${STRIPE_SECRET_KEY:sk_test_...}
+    webhook-secret: ${STRIPE_WEBHOOK_SECRET:whsec_...}
+
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://127.0.0.1:3000}
+
+logging:
+  level:
+    com.ecommerce.ecommerce: DEBUG
+    org.springframework.security: DEBUG
+    org.springframework.web: DEBUG
+    org.flywaydb: DEBUG
