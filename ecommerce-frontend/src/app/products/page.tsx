@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/Button';
 import { productsApi } from '@/lib/api/products';
 import { categoriesApi } from '@/lib/api/categories';
 import { ProductResponse, CategoryResponse } from '@/lib/types/api';
+import checkWidth from '@/lib/utils/checkWidth';
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<ProductResponse[]>([]);
@@ -19,7 +20,7 @@ export default function ProductsPage() {
   const [showFilters, setShowFilters] = useState(false);
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
-
+  const isDesktop = checkWidth();
   useEffect(() => {
     fetchCategories();
   }, []);
@@ -105,8 +106,8 @@ export default function ProductsPage() {
         <motion.aside
           initial={false}
           animate={{
-            height: showFilters || window.innerWidth >= 768 ? 'auto' : 0,
-            opacity: showFilters || window.innerWidth >= 768 ? 1 : 0,
+            height: showFilters || isDesktop ? 'auto' : 0,
+            opacity: showFilters || isDesktop ? 1 : 0,
           }}
           className="md:col-span-1 overflow-hidden"
         >
