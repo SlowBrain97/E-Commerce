@@ -28,13 +28,10 @@ public class JwtUtil {
     private Key getSignInKey() {
         byte[] keyBytes;
         try {
-            // Try Base64 first
             keyBytes = Decoders.BASE64.decode(jwtSecret);
         } catch (IllegalArgumentException e) {
-            // Fallback to raw bytes if not Base64
             keyBytes = jwtSecret.getBytes(java.nio.charset.StandardCharsets.UTF_8);
         }
-        // Ensure minimum key length for HS256 (256-bit = 32 bytes)
         if (keyBytes.length < 32) {
             // Pad deterministically to 32 bytes
             byte[] padded = new byte[32];

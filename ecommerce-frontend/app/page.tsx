@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { ArrowRight, TrendingUp, Shield, Truck } from 'lucide-react';
 import { ProductGrid } from '@/components/products/ProductGrid';
@@ -44,8 +45,9 @@ export default function Home() {
     <div>
       {/* Hero Section */}
       <section className="relative bg-gradient-to-br from-gray-50 to-gray-100 py-20 md:py-32">
-        <div className="container-custom">
-          <div className="grid md:grid-cols-2 gap-12 items-center">
+      
+        <div className="container-custom z-20">
+          <div className="grid md:grid-cols-2 gap-12 items-center z-20">
             <motion.div
               initial={{ opacity: 0, x: -50 }}
               animate={{ opacity: 1, x: 0 }}
@@ -82,7 +84,7 @@ export default function Home() {
               <div className="absolute inset-0 bg-gradient-to-br from-main-text/10 to-semi-text/10" />
               {/* Placeholder for hero image */}
               <div className="w-full h-full flex items-center justify-center bg-gray-200">
-                <p className="text-semi-text text-lg">Hero Image Placeholder</p>
+                  <Image src="/images/hero.webp" alt="Hero" fill className="object-cover z-10" sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"/>
               </div>
             </motion.div>
           </div>
@@ -157,8 +159,14 @@ export default function Home() {
                 >
                   <Link href={`/categories/${category.id}`}>
                     <div className="card overflow-hidden cursor-pointer group">
-                      <div className="aspect-square bg-gray-100 flex items-center justify-center">
-                        <p className="text-4xl">{category.icon || '👟'}</p>
+                      <div className="aspect-square bg-gray-100 overflow-hidden">
+                        <Image 
+                          src={category.imageUrl || '/placeholder-product.jpg'}
+                          alt={category.name}
+                          width={300}
+                          height={300}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
                       </div>
                       <div className="p-4 text-center">
                         <h3 className="font-semibold text-main-text group-hover:text-semi-text transition-colors">

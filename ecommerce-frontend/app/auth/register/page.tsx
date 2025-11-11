@@ -10,15 +10,19 @@ import { Input } from '@/components/ui/Input';
 import { useAuthStore } from '@/lib/store/authStore';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
+import { object, z } from 'zod';
 
 const registerSchema = z.object({
   username: z.string().min(3, 'Username must be at least 3 characters'),
   email: z.string().email('Invalid email address'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
+  confirmPassword: z.string().min(6, 'Please retype your password'),
   firstName: z.string().optional(),
   lastName: z.string().optional(),
   phoneNumber: z.string().optional(),
+}).refine((data)=> data.password === data.confirmPassword, {
+  message: 'Passwords do not match',
+  path: ['confirmPassword'],
 });
 
 type RegisterFormData = z.infer<typeof registerSchema>;
@@ -134,7 +138,23 @@ export default function RegisterPage() {
                 {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
               </button>
             </div>
-
+            <div className="relative">
+              <Input
+                label="Confirm Password"
+                type={showPassword ? 'text' : 'password'}
+                placeholder="Please retype your password"
+                icon={<Lock className="w-5 h-5" />}
+                error={errors.confirmPassword?.message}
+                {...register('confirmPassword')}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-[42px] text-semi-text hover:text-main-text"
+              >
+                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+              </button>
+            </div>
             <div className="flex items-start">
               <input
                 type="checkbox"

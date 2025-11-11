@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { categoriesApi } from '@/lib/api/categories';
 import { CategoryResponse } from '@/lib/types/api';
+import Image from 'next/image';
 
 export default function CategoriesPage() {
   const [categories, setCategories] = useState<CategoryResponse[]>([]);
@@ -72,9 +73,16 @@ export default function CategoriesPage() {
           >
             <Link href={`/products?category=${category.id}`}>
               <div className="card overflow-hidden cursor-pointer group h-full">
-                <div className="aspect-square bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
-                  <p className="text-6xl">{category.icon || '👟'}</p>
-                </div>
+                 <div className="aspect-square bg-gray-100 overflow-hidden">
+                                        <Image 
+                                          src={category.imageUrl || '/placeholder-product.jpg'}
+                                          alt={category.name}
+                                          width={300}
+                                          height={300}
+                                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                        />
+                                  </div>
+        
                 <div className="p-6">
                   <h3 className="font-bold text-main-text text-lg mb-2 group-hover:text-semi-text transition-colors">
                     {category.name}
