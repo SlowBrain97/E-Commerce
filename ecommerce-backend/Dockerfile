@@ -1,40 +1,29 @@
-# Multi-stage build for Spring Boot application
-FROM eclipse-temurin:23-jdk-alpine AS builder
 
+FROM eclipse-temurin:21-jdk-jammy AS build
 WORKDIR /app
 
-# Copy Maven files
-COPY pom.xml ./
-COPY src ./src/
 
-# Build the application
-RUN apk add --no-cache maven && \
-    mvn clean package -DskipTests
+COPY mvnw .
+COPY .mvn .mvn
+COPY pom.xml .
 
-# Runtime stage
-FROM eclipse-temurin:23-jre-alpine
 
+RUN ./mvnw dependency:go-offline -B
+
+
+COPY src ./src
+
+
+RUN ./mvnw clean package -DskipTests -B
+
+
+FROM eclipse-temurin:21-jre-jammy
 WORKDIR /app
 
-# Create non-root user
-RUN addgroup -g 1001 -S appuser && \
-    adduser -S appuser -u 1001 -G appuser
 
-# Copy the JAR file from builder stage
-COPY --from=builder /app/target/*.jar app.jar
+COPY --from=build /app/target/*.jar app.jar
 
-# Change ownership of the app directory
-RUN chown -R appuser:appuser /app
 
-# Switch to non-root user
-USER appuser
+ENV JAVA_OPTS=""
 
-# Expose port
-EXPOSE 8080
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:8080/api/actuator/health || exit 1
-
-# Run the application
-ENTRYPOINT ["java", "-jar", "app.jar"]
+ENTRYPOINT ["sh","-c","java $JAVA_OPTS -Dserver.port=${PORT} -jar /app/app.jar"]
