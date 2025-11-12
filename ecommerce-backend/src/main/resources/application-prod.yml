@@ -1,8 +1,22 @@
 server:
-  port: ${PORT:8081}
+  port: ${PORT:8080}
+
 spring:
   application:
     name: ecommerce-backend
+
+  datasource:
+    url: jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: none
+      dialect: org.hibernate.dialect.PostgreSQLDialect
+    show-sql: true
+    generate-ddl: true
 
   flyway:
     enabled: true
@@ -13,25 +27,11 @@ spring:
     baseline-description: "Initial schema"
     baseline-version: 1
 
-  datasource:
-    url: jdbc:postgresql://localhost:5433/e-commerce
-    username: postgres
-    password: Weedkhalifa97
-    driver-class-name: org.postgresql.Driver
-
-
-  jpa:
-    hibernate:
-      ddl-auto: none
-      dialect: org.hibernate.dialect.PostgreSQLDialect
-    show-sql: true
-    generate-ddl: true
-
   data:
     redis:
-      host: localhost
-      port: 6379
-      password:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
       timeout: 2000ms
       repositories:
         enabled: false
@@ -39,8 +39,8 @@ spring:
   mail:
     host: smtp.gmail.com
     port: 587
-    username: ${MAIL_USERNAME:tranthang160897@gmail.com}
-    password: ${RAIWAY_MAIL_PASSWORD:iqfaypmsqmiylhrf}
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
     properties:
       mail:
         smtp:
@@ -53,9 +53,9 @@ spring:
       client:
         registration:
           google:
-            client-id: ${GOOGLE_CLIENT_ID:your-google-client-id}
-            client-secret: ${GOOGLE_CLIENT_SECRET:your-google-client-secret}
-            redirect-uri: http://localhost:3000/auth/callback/google
+            client-id: ${GOOGLE_CLIENT_ID}
+            client-secret: ${GOOGLE_CLIENT_SECRET}
+            redirect-uri: ${GOOGLE_REDIRECT_URI:http://localhost:3000/auth/callback/google}
             scope: openid,profile,email
 
   batch:
@@ -80,21 +80,23 @@ management:
 
 app:
   jwt:
-    secret: ${JWT_SECRET:22802f27947a800933758d59dcfb05f995317af29a3b0ce1c0e59fae0768662e}
-    expiration: 86400000 # 24 hours
+    secret: ${JWT_SECRET}
+    expiration: 86400000 # 24h
     refresh-expiration: 604800000 # 7 days
 
   stripe:
-    public-key: ${STRIPE_PUBLIC_KEY:pk_test_...}
-    secret-key: ${STRIPE_SECRET_KEY:sk_test_...}
-    webhook-secret: ${STRIPE_WEBHOOK_SECRET:whsec_...}
+    public-key: ${STRIPE_PUBLIC_KEY}
+    secret-key: ${STRIPE_SECRET_KEY}
+    webhook-secret: ${STRIPE_WEBHOOK_SECRET}
 
   cors:
+
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://127.0.0.1:3000}
+
 
 logging:
   level:
     com.ecommerce.ecommerce: DEBUG
-    org.springframework.security: DEBUG
-    org.springframework.web: DEBUG
-    org.flywaydb: DEBUG
+    org.springframework.security: INFO
+    org.springframework.web: INFO
+    org.flywaydb: INFO
