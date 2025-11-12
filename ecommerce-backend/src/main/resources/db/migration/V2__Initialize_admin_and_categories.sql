@@ -1,6 +1,194 @@
 
 
 
+CREATE TABLE users (
+                       id BIGSERIAL PRIMARY KEY,
+                       email VARCHAR(255) NOT NULL UNIQUE,
+                       password VARCHAR(255) NOT NULL,
+                       first_name VARCHAR(100),
+                       last_name VARCHAR(100),
+                       phone VARCHAR(20),
+                       avatar TEXT,
+                       role VARCHAR(20) NOT NULL DEFAULT 'USER',
+                       provider VARCHAR(20),
+                       provider_id VARCHAR(255),
+                       email_verified BOOLEAN NOT NULL DEFAULT false,
+                       active BOOLEAN NOT NULL DEFAULT true,
+                       created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                       updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE categories (
+                            id BIGSERIAL PRIMARY KEY,
+                            name VARCHAR(100) NOT NULL,
+                            slug VARCHAR(100) NOT NULL UNIQUE,
+                            description TEXT,
+                            image_url TEXT,
+                            parent_id BIGINT,
+                            active BOOLEAN NOT NULL DEFAULT true,
+                            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                            updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                            FOREIGN KEY (parent_id) REFERENCES categories(id) ON DELETE CASCADE
+);
+
+
+CREATE TABLE products (
+                          id BIGSERIAL PRIMARY KEY,
+                          name VARCHAR(255) NOT NULL,
+                          slug VARCHAR(255) NOT NULL UNIQUE,
+                          description TEXT,
+                          short_description TEXT,
+                          price DECIMAL(10, 2) NOT NULL,
+                          compare_at_price DECIMAL(10, 2),
+                          cost_per_item DECIMAL(10, 2),
+                          sku VARCHAR(100) NOT NULL UNIQUE,
+                          barcode VARCHAR(100),
+                          quantity INT NOT NULL DEFAULT 0,
+                          is_taxable BOOLEAN NOT NULL DEFAULT true,
+                          is_featured BOOLEAN NOT NULL DEFAULT false,
+                          is_active BOOLEAN NOT NULL DEFAULT true,
+                          category_id BIGINT NOT NULL,
+                          created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                          updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                          FOREIGN KEY (category_id) REFERENCES categories(id)
+);
+
+CREATE TABLE product_variants (
+                                  id BIGSERIAL PRIMARY KEY,
+                                  product_id BIGINT NOT NULL,
+                                  name VARCHAR(255) NOT NULL,
+                                  sku VARCHAR(100) NOT NULL UNIQUE,
+                                  barcode VARCHAR(100),
+                                  price DECIMAL(10, 2) NOT NULL,
+                                  compare_at_price DECIMAL(10, 2),
+                                  cost_per_item DECIMAL(10, 2),
+                                  quantity INT NOT NULL DEFAULT 0,
+                                  weight DECIMAL(10, 2),
+                                  is_active BOOLEAN NOT NULL DEFAULT true,
+                                  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                  FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
+);
+
+
+CREATE TABLE product_images (
+                                id BIGSERIAL PRIMARY KEY,
+                                product_id BIGINT NOT NULL,
+                                image_url TEXT NOT NULL,
+                                alt_text TEXT,
+                                is_primary BOOLEAN NOT NULL DEFAULT false,
+                                sort_order INT NOT NULL DEFAULT 0,
+                                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
+);
+
+
+CREATE TABLE reviews (
+                         id BIGSERIAL PRIMARY KEY,
+                         product_id BIGINT NOT NULL,
+                         user_id BIGINT NOT NULL,
+                         rating INT NOT NULL CHECK (rating >= 1 AND rating <= 5),
+                         title VARCHAR(255),
+                         comment TEXT,
+                         is_approved BOOLEAN NOT NULL DEFAULT false,
+                         created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                         updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                         FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
+                         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+
+CREATE TABLE addresses (
+                           id BIGSERIAL PRIMARY KEY,
+                           user_id BIGINT NOT NULL,
+                           first_name VARCHAR(100) NOT NULL,
+                           last_name VARCHAR(100) NOT NULL,
+                           company VARCHAR(100),
+                           address1 TEXT NOT NULL,
+                           address2 TEXT,
+                           city VARCHAR(100) NOT NULL,
+                           province VARCHAR(100),
+                           country VARCHAR(100) NOT NULL,
+                           zip_code VARCHAR(20) NOT NULL,
+                           phone VARCHAR(20) NOT NULL,
+                           is_default BOOLEAN NOT NULL DEFAULT false,
+                           created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                           updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                           FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+
+CREATE TABLE orders (
+                        id BIGSERIAL PRIMARY KEY,
+                        order_number VARCHAR(50) NOT NULL UNIQUE,
+                        user_id BIGINT,
+                        status VARCHAR(20) NOT NULL,
+                        subtotal DECIMAL(10, 2) NOT NULL,
+                        tax_amount DECIMAL(10, 2) NOT NULL DEFAULT 0,
+                        shipping_amount DECIMAL(10, 2) NOT NULL DEFAULT 0,
+                        discount_amount DECIMAL(10, 2) NOT NULL DEFAULT 0,
+                        total DECIMAL(10, 2) NOT NULL,
+                        payment_status VARCHAR(20) NOT NULL,
+                        payment_method VARCHAR(50),
+                        shipping_address_id BIGINT,
+                        billing_address_id BIGINT,
+                        notes TEXT,
+                        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
+                        FOREIGN KEY (shipping_address_id) REFERENCES addresses(id) ON DELETE SET NULL,
+                        FOREIGN KEY (billing_address_id) REFERENCES addresses(id) ON DELETE SET NULL
+);
+
+CREATE TABLE order_items (
+                             id BIGSERIAL PRIMARY KEY,
+                             order_id BIGINT NOT NULL,
+                             product_id BIGINT,
+                             variant_id BIGINT,
+                             product_name VARCHAR(255) NOT NULL,
+                             variant_name VARCHAR(255),
+                             sku VARCHAR(100) NOT NULL,
+                             price DECIMAL(10, 2) NOT NULL,
+                             quantity INT NOT NULL,
+                             total_price DECIMAL(10, 2) NOT NULL,
+                             created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                             updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                             FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
+                             FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE SET NULL,
+                             FOREIGN KEY (variant_id) REFERENCES product_variants(id) ON DELETE SET NULL
+);
+
+CREATE TABLE cart_items (
+                            id BIGSERIAL PRIMARY KEY,
+                            user_id BIGINT NOT NULL,
+                            product_id BIGINT NOT NULL,
+                            variant_id BIGINT,
+                            quantity INT NOT NULL DEFAULT 1,
+                            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                            updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                            FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
+                            FOREIGN KEY (variant_id) REFERENCES product_variants(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_user_email ON users(email);
+CREATE INDEX idx_user_provider ON users(provider, provider_id);
+CREATE INDEX idx_category_parent ON categories(parent_id);
+CREATE INDEX idx_product_category ON products(category_id);
+CREATE INDEX idx_product_slug ON products(slug);
+CREATE INDEX idx_variant_product ON product_variants(product_id);
+CREATE INDEX idx_variant_sku ON product_variants(sku);
+CREATE INDEX idx_image_product ON product_images(product_id);
+CREATE INDEX idx_review_product ON reviews(product_id);
+CREATE INDEX idx_review_user ON reviews(user_id);
+CREATE INDEX idx_address_user ON addresses(user_id);
+CREATE INDEX idx_order_user ON orders(user_id);
+CREATE INDEX idx_order_status ON orders(status);
+CREATE INDEX idx_order_number ON orders(order_number);
+CREATE INDEX idx_order_item_order ON order_items(order_id);
+CREATE INDEX idx_cart_user ON cart_items(user_id);
+
 
 -- ================= Insert main categories =================
 INSERT INTO categories (name, description, image_url, icon, is_active, is_featured, sort_order, created_at, updated_at)
