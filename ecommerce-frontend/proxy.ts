@@ -5,7 +5,6 @@ export default function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   
   const accessToken = request.cookies.get("accessToken");
-  console.log("middleware cookies:", request.cookies.getAll());
 
   const protectedRoutes = ['/profile', '/cart', '/checkout', '/orders'];
   
