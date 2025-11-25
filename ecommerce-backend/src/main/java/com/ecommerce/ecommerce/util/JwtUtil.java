@@ -22,9 +22,9 @@ public class JwtUtil {
     @Value("${jwt.secret:mySecretKey}")
     private String jwtSecret;
 
-    @Value("${jwt.expiration:86400}")
-    private int jwtExpirationMs;
 
+    public static long jwtExpirationMs = 24 * 60 * 60 * 1000L;
+    public static long refreshExpirationMs = 30 * 24 * 60 * 60 * 1000L;
     private Key getSignInKey() {
         byte[] keyBytes;
         try {
@@ -59,8 +59,6 @@ public class JwtUtil {
     }
 
     public String generateRefreshToken(UserDetails userDetails) {
-        // Create a longer-lasting refresh token (e.g., 30 days)
-        long refreshExpirationMs = 30 * 24 * 60 * 60 * 1000L; // 30 days
 
         return Jwts.builder()
                 .setSubject(userDetails.getUsername())
@@ -84,7 +82,11 @@ public class JwtUtil {
         return Jwts.parserBuilder().setSigningKey(getSignInKey()).build()
                    .parseClaimsJws(token).getBody().getSubject();
     }
-
+    public long getTimeAlive(String token) {
+        long currentTime = new Date().getTime();
+      return Jwts.parserBuilder().setSigningKey(getSignInKey()).build()
+                .parseClaimsJws(token).getBody().getExpiration().getTime() - currentTime;
+    }
     public String getUserNameFromJwtToken(String token) {
         return getUsernameFromToken(token);
     }

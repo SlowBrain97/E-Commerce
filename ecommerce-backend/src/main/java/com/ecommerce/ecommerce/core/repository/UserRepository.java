@@ -48,6 +48,11 @@ public interface UserRepository extends JpaRepository<User, Long> {
      * Check if username exists
      */
     boolean existsByUsername(String username);
+    
+    /**
+     * Find user by provider ID
+     */
+    Optional<User> findByProviderId(String providerId);
 
     /**
      * Find all active users with pagination

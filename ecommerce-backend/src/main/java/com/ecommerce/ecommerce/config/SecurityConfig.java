@@ -75,9 +75,10 @@ public class SecurityConfig {
                 .requestMatchers("/api/cart/**").hasAnyRole("USER", "ADMIN")
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 .requestMatchers("/api/webhook/**").permitAll()
+                    .requestMatchers("/api/reviews/**").permitAll()
                 .requestMatchers("/actuator/**").permitAll()
-                .requestMatchers("/h2-console/**").permitAll() // For development only
-                .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll() // Swagger UI endpoints
+                .requestMatchers("/h2-console/**").permitAll()
+                .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
                 .anyRequest().authenticated()
             );
 

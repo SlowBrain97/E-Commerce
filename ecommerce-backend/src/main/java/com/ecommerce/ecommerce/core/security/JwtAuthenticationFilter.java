@@ -1,8 +1,10 @@
 package com.ecommerce.ecommerce.core.security;
 
+import com.ecommerce.ecommerce.core.service.TokenBlacklistService;
 import com.ecommerce.ecommerce.core.service.UserService;
 import com.ecommerce.ecommerce.core.service.UserServiceProvider;
 import com.ecommerce.ecommerce.util.JwtUtil;
+import jakarta.servlet.http.Cookie;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -24,6 +26,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtUtil jwtUtil;
     private final UserServiceProvider userService;
+    private final TokenBlacklistService blacklistService;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -32,9 +35,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         try {
             String jwt = parseJwt(request);
-            if (jwt != null && jwtUtil.validateJwtToken(jwt)) {
+            logger.info("parsed jwt ");
+            if (jwt != null && jwtUtil.validateJwtToken(jwt) && !blacklistService.isTokenBlacklisted(jwt)) {
                 String username = jwtUtil.getUserNameFromJwtToken(jwt);
-
+                logger.info("validated jwt : " + jwt);
                 UserDetails userDetails = userService.loadUserByUsername(username);
                 UsernamePasswordAuthenticationToken authentication =
                     new UsernamePasswordAuthenticationToken(userDetails,
@@ -43,6 +47,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
                 SecurityContextHolder.getContext().setAuthentication(authentication);
+                logger.info("set Authentication into context holder success");
             }
         } catch (Exception e) {
             logger.error("Cannot set user authentication: {}", e);
@@ -52,12 +57,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     }
 
     private String parseJwt(HttpServletRequest request) {
-        String headerAuth = request.getHeader("Authorization");
-
-        if (StringUtils.hasText(headerAuth) && headerAuth.startsWith("Bearer ")) {
-            return headerAuth.substring(7);
+        String accessToken = null;
+        
+        Cookie[] cookies = request.getCookies();
+        if (cookies != null) {
+            for (Cookie cookie : cookies) {
+                if ("accessToken".equals(cookie.getName())) {
+                    accessToken = cookie.getValue();
+                    return accessToken;
+                }
+            }
         }
-
         return null;
     }
 }

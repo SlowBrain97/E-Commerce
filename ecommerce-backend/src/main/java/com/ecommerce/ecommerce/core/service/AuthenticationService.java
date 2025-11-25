@@ -30,9 +30,7 @@ public class AuthenticationService {
         }
 
         Object principal = authentication.getPrincipal();
-        if (principal instanceof org.springframework.security.core.userdetails.User) {
-            org.springframework.security.core.userdetails.User userDetails =
-                    (org.springframework.security.core.userdetails.User) principal;
+        if (principal instanceof UserDetails userDetails) {
             User user = userRepository.findByEmailOrUsername(userDetails.getUsername(), userDetails.getUsername())
                     .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND, "User not found"));
             return user.getId().toString();

@@ -5,15 +5,23 @@ import com.ecommerce.ecommerce.api.dto.common.ApiResponse;
 import com.ecommerce.ecommerce.core.domain.entity.User;
 import com.ecommerce.ecommerce.core.exception.BusinessException;
 import com.ecommerce.ecommerce.core.exception.ErrorCode;
+import com.ecommerce.ecommerce.core.service.TokenBlacklistService;
 import com.ecommerce.ecommerce.core.service.UserService;
 import com.ecommerce.ecommerce.core.service.UserServiceProvider;
 import com.ecommerce.ecommerce.integration.service.EmailService;
+import com.ecommerce.ecommerce.util.CookieUtil;
 import com.ecommerce.ecommerce.util.JwtUtil;
 import jakarta.annotation.security.PermitAll;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -45,18 +53,20 @@ public class AuthController {
     private final UserServiceProvider userDetailsService;
     private final JwtUtil jwtUtil;
     private final EmailService emailService;
+    private final TokenBlacklistService blacklistService;
     /**
      * Register a new user account
      */
     @PostMapping("/register")
     @PermitAll
-    public ResponseEntity<ApiResponse<AuthResponse>> register(@Valid @RequestBody RegisterRequest request) {
+    public ResponseEntity<ApiResponse<AuthResponse>> register(@Valid @RequestBody RegisterRequest request, HttpServletResponse servletResponse) {
         log.info("Processing registration request for: {}", request.getEmail());
 
         User user = userService.registerUser(
                 request.getUsername(),
                 request.getEmail(),
                 request.getPassword(),
+                request.getConfirmPassword(),
                 request.getFirstName(),
                 request.getLastName()
         );
@@ -65,18 +75,18 @@ public class AuthController {
         UserDetails userDetails = userDetailsService.loadUserByUsername(user.getEmail());
         String accessToken = jwtUtil.generateAccessToken(userDetails);
         String refreshToken = jwtUtil.generateRefreshToken(userDetails);
-
+        ResponseCookie refreshTokenCookie = CookieUtil.addRefreshTokenToCookie(refreshToken);
+        ResponseCookie accessTokenCookie = CookieUtil.addAccessTokenToCookie(accessToken);
+        HttpHeaders header = new HttpHeaders();
+        header.add(HttpHeaders.SET_COOKIE,accessTokenCookie.toString());
+        header.add(HttpHeaders.SET_COOKIE,refreshTokenCookie.toString());
         AuthResponse response = AuthResponse.builder()
-                .accessToken(accessToken)
-                .refreshToken(refreshToken)
-                .tokenType("Bearer")
-                .expiresIn(jwtUtil.getAccessTokenExpiration())
                 .user(mapToUserInfo(user))
                 .build();
 
         log.info("User registered successfully: {}", user.getId());
         emailService.sendWelcomeEmail(request.getEmail(),request.getUsername(),request.getFirstName());
-        return ResponseEntity.ok(ApiResponse.success(HttpStatus.OK.value(), "User registered successfully", response));
+        return ResponseEntity.ok().headers(header).body(ApiResponse.success(HttpStatus.OK.value(), "User registered successfully", response));
     }
 
     /**
@@ -84,7 +94,7 @@ public class AuthController {
      */
     @PostMapping("/login")
     @PermitAll
-    public ResponseEntity<ApiResponse<AuthResponse>> login(@Valid @RequestBody LoginRequest request) {
+    public ResponseEntity<ApiResponse<AuthResponse>> login(@Valid @RequestBody LoginRequest request, HttpServletResponse servletResponse) {
         log.info("Processing login request for: {}", request.getEmailOrUsername());
 
         // Authenticate user
@@ -104,16 +114,17 @@ public class AuthController {
         Optional<User> userOpt = userService.findByEmailOrUsername(userDetails.getUsername());
         User user = userOpt.orElseThrow(() -> new RuntimeException("User not found"));
 
+        ResponseCookie refreshTokenCookie = CookieUtil.addRefreshTokenToCookie(refreshToken);
+        ResponseCookie accessTokenCookie = CookieUtil.addAccessTokenToCookie(accessToken);
+        HttpHeaders header = new HttpHeaders();
+        header.add(HttpHeaders.SET_COOKIE,accessTokenCookie.toString());
+        header.add(HttpHeaders.SET_COOKIE,refreshTokenCookie.toString());
         AuthResponse response = AuthResponse.builder()
-                .accessToken(accessToken)
-                .refreshToken(refreshToken)
-                .tokenType("Bearer")
-                .expiresIn(jwtUtil.getAccessTokenExpiration())
                 .user(mapToUserInfo(user))
                 .build();
 
         log.info("User logged in successfully: {}", user.getId());
-        return ResponseEntity.ok(ApiResponse.success(HttpStatus.OK.value(), "Login successful", response));
+        return ResponseEntity.ok().headers(header).body(ApiResponse.success(HttpStatus.OK.value(), "User login successfully", response));
     }
 
     /**
@@ -121,10 +132,8 @@ public class AuthController {
      */
     @PostMapping("/refresh")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> refreshToken(@Valid @RequestBody RefreshTokenRequest request) {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> refreshToken(@CookieValue("refreshToken") String refreshToken,HttpServletResponse servletResponse) {
         try {
-            String refreshToken = request.getRefreshToken();
-
             // Validate refresh token
             if (!jwtUtil.validateToken(refreshToken)) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
@@ -141,13 +150,10 @@ public class AuthController {
 
             UserDetails userDetails = userDetailsService.loadUserByUsername(username);
             String newAccessToken = jwtUtil.generateAccessToken(userDetails);
+            ResponseCookie newTokenCookie = CookieUtil.addAccessTokenToCookie(newAccessToken);
 
-            Map<String, Object> response = new HashMap<>();
-            response.put("accessToken", newAccessToken);
-            response.put("tokenType", "Bearer");
-            response.put("expiresIn", jwtUtil.getAccessTokenExpiration());
 
-            return ResponseEntity.ok(ApiResponse.success(HttpStatus.OK.value(), "Token refreshed successfully", response));
+            return ResponseEntity.ok().header(HttpHeaders.SET_COOKIE,newTokenCookie.toString()).body(ApiResponse.success(HttpStatus.OK.value(), "Token refreshed successfully", null));
 
         } catch (Exception e) {
             log.error("Token refresh failed", e);
@@ -172,7 +178,7 @@ public class AuthController {
     @PostMapping("/change-password")
     @PreAuthorize("hasRole('USER')")
     public ResponseEntity<ApiResponse<Map<String, String>>> changePassword(@Valid @RequestBody ChangePasswordRequest request,
-                                          @RequestHeader("Authorization") String token) {
+                                          @CookieValue("accessToken") String token) {
         String jwt = token.substring(7);
         String username = jwtUtil.getUsernameFromToken(jwt);
 
@@ -188,11 +194,20 @@ public class AuthController {
      */
     @PostMapping("/logout")
     @PreAuthorize("hasRole('USER')")
-    public ResponseEntity<ApiResponse<Map<String, String>>> logout() {
-        // In a stateless JWT implementation, logout is handled client-side
-        // You might want to implement token blacklisting for better security
+    public ResponseEntity<ApiResponse<Map<String, String>>> logout(@CookieValue("accessToken") String accessToken, @CookieValue ("refreshToken") String refreshToken) {
+        ResponseCookie deleteAccessToken = CookieUtil.deleteAccessToken(accessToken);
+        ResponseCookie deleteRefreshToken = CookieUtil.deleteRefreshToken(refreshToken);
+        HttpHeaders headers = new HttpHeaders();
+        headers.add(HttpHeaders.SET_COOKIE,deleteAccessToken.toString());
+        headers.add(HttpHeaders.SET_COOKIE,deleteRefreshToken.toString());
+        if (jwtUtil.getTimeAlive(accessToken) > 0 ){
+            blacklistService.blacklistToken(accessToken, jwtUtil.getTimeAlive(accessToken));
+        }
+        if (jwtUtil.getTimeAlive(refreshToken) > 0 ){
+            blacklistService.blacklistToken(refreshToken, jwtUtil.getTimeAlive(refreshToken));
+        }
         Map<String, String> response = Map.of("message", "Logged out successfully");
-        return ResponseEntity.ok(ApiResponse.success(HttpStatus.OK.value(), "Logged out successfully", response));
+        return ResponseEntity.ok().headers(headers).body(ApiResponse.success(HttpStatus.OK.value(), "Logged out successfully", response));
     }
 
     /**
@@ -217,16 +232,17 @@ public class AuthController {
             UserDetails userDetails = userDetailsService.loadUserByUsername(user.getEmail());
             String accessToken = jwtUtil.generateAccessToken(userDetails);
             String refreshToken = jwtUtil.generateRefreshToken(userDetails);
-
+            ResponseCookie accessTokenCookie = CookieUtil.addAccessTokenToCookie(accessToken);
+            ResponseCookie refreshTokenCookie = CookieUtil.addRefreshTokenToCookie(refreshToken);
+            HttpHeaders header = new HttpHeaders();
+            header.add(HttpHeaders.SET_COOKIE,accessTokenCookie.toString());
+            header.add(HttpHeaders.SET_COOKIE,refreshTokenCookie.toString());
             AuthResponse response = AuthResponse.builder()
-                    .accessToken(accessToken)
-                    .refreshToken(refreshToken)
-                    .tokenType("Bearer")
-                    .expiresIn(jwtUtil.getAccessTokenExpiration())
                     .user(mapToUserInfo(user))
                     .build();
 
-            return ResponseEntity.ok(ApiResponse.success(HttpStatus.OK.value(), "OAuth2 authentication successful", response));
+            return ResponseEntity.ok().headers(header)
+                    .body(ApiResponse.success(HttpStatus.OK.value(), "OAuth2 authentication successful", response));
 
         } catch (Exception e) {
             log.error("OAuth2 callback failed", e);

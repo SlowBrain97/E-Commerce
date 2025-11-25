@@ -21,7 +21,7 @@ public class ProductImageDTO {
 
   @Size(max = 255, message = "Alt text cannot exceed 255 characters")
   private String altText;
-
+  @Builder.Default
   private Boolean isPrimary = false;
   private Integer sortOrder;
 }

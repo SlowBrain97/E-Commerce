@@ -6,8 +6,6 @@ import { toast } from 'react-hot-toast';
 
 interface AuthState {
   user: UserInfo | null;
-  accessToken: string | null;
-  refreshToken: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   
@@ -16,7 +14,6 @@ interface AuthState {
   register: (data: RegisterRequest) => Promise<void>;
   logout: () => Promise<void>;
   setUser: (user: UserInfo | null) => void;
-  setTokens: (accessToken: string, refreshToken: string) => void;
   clearAuth: () => void;
   checkAuth: () => Promise<void>;
 }
@@ -25,8 +22,6 @@ export const useAuthStore = create<AuthState>()(
   persist(
     (set, get) => ({
       user: null,
-      accessToken: null,
-      refreshToken: null,
       isAuthenticated: false,
       isLoading: false,
 
@@ -36,16 +31,9 @@ export const useAuthStore = create<AuthState>()(
           const response = await authApi.login(credentials);
           
           if (response.success) {
-            const { accessToken, refreshToken, user } = response.data;
-            
-            // Store tokens in localStorage
-            localStorage.setItem('accessToken', accessToken);
-            localStorage.setItem('refreshToken', refreshToken);
-            
+            const { user } = response.data;
             set({
               user,
-              accessToken,
-              refreshToken,
               isAuthenticated: true,
               isLoading: false,
             });
@@ -65,16 +53,9 @@ export const useAuthStore = create<AuthState>()(
           const response = await authApi.register(data);
           
           if (response.success) {
-            const { accessToken, refreshToken, user } = response.data;
-            
-            // Store tokens in localStorage
-            localStorage.setItem('accessToken', accessToken);
-            localStorage.setItem('refreshToken', refreshToken);
-            
+            const { user } = response.data;
             set({
               user,
-              accessToken,
-              refreshToken,
               isAuthenticated: true,
               isLoading: false,
             });
@@ -94,74 +75,52 @@ export const useAuthStore = create<AuthState>()(
         } catch (error) {
           console.error('Logout error:', error);
         } finally {
-          // Clear tokens from localStorage
-          localStorage.removeItem('accessToken');
-          localStorage.removeItem('refreshToken');
-          localStorage.removeItem('user');
-          
           set({
             user: null,
-            accessToken: null,
-            refreshToken: null,
             isAuthenticated: false,
           });
-          
+          localStorage.clear();
+          document.location.reload();
           toast.success('Logged out successfully');
         }
       },
 
       setUser: (user: UserInfo | null) => {
-        set({ user, isAuthenticated: !!user });
+        set({ user});
       },
 
-      setTokens: (accessToken: string, refreshToken: string) => {
-        localStorage.setItem('accessToken', accessToken);
-        localStorage.setItem('refreshToken', refreshToken);
-        set({ accessToken, refreshToken });
-      },
 
       clearAuth: () => {
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
         localStorage.removeItem('user');
         
         set({
           user: null,
-          accessToken: null,
-          refreshToken: null,
           isAuthenticated: false,
         });
       },
 
       checkAuth: async () => {
-        const accessToken = localStorage.getItem('accessToken');
         
-        if (!accessToken) {
-          set({ isAuthenticated: false, user: null });
-          return;
-        }
-
         try {
+          set({ isLoading: true });
           const response = await authApi.getCurrentUser();
           
           if (response.success) {
             set({
               user: response.data,
               isAuthenticated: true,
-              accessToken,
             });
           }
         } catch (error) {
-          get().clearAuth();
+          console.error('Auth check failed:', error);
+          set({ isLoading: false });
         }
       },
     }),
     {
-      name: 'auth-storage',
+      name: 'userInfo-storage',
       partialize: (state) => ({
         user: state.user,
-        accessToken: state.accessToken,
-        refreshToken: state.refreshToken,
         isAuthenticated: state.isAuthenticated,
       }),
     }

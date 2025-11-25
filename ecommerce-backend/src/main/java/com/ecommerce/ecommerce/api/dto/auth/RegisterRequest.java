@@ -29,6 +29,10 @@ public class RegisterRequest {
   @Size(min = 6, max = 100, message = "Password must be between 6 and 100 characters")
   private String password;
 
+  @NotBlank(message = "Confirm Password is required")
+  @Size(min = 6, max = 100, message = "Password must be between 6 and 100 characters")
+  private String confirmPassword;
+
   @Size(max = 50, message = "First name cannot exceed 50 characters")
   private String firstName;
 

@@ -12,6 +12,7 @@ class ApiClient {
       headers: {
         'Content-Type': 'application/json',
       },
+      withCredentials: true,
       timeout: 30000,
     });
 
@@ -19,19 +20,6 @@ class ApiClient {
   }
 
   private setupInterceptors() {
-    // Request interceptor
-    this.client.interceptors.request.use(
-      (config: InternalAxiosRequestConfig) => {
-        const token = this.getAccessToken();
-        if (token && config.headers) {
-          config.headers.Authorization = `Bearer ${token}`;
-        }
-        return config;
-      },
-      (error) => {
-        return Promise.reject(error);
-      }
-    );
 
     // Response interceptor
     this.client.interceptors.response.use(
@@ -44,23 +32,11 @@ class ApiClient {
           originalRequest._retry = true;
 
           try {
-            const refreshToken = this.getRefreshToken();
-            if (refreshToken) {
-              const response = await this.client.post('/auth/refresh', {
-                refreshToken,
-              });
+          
+            const response = await this.client.post('/auth/refresh');
 
-              const { accessToken } = response.data.data;
-              this.setAccessToken(accessToken);
-
-              if (originalRequest.headers) {
-                originalRequest.headers.Authorization = `Bearer ${accessToken}`;
-              }
-
-              return this.client(originalRequest);
-            }
+            return this.client(originalRequest);
           } catch (refreshError) {
-            this.clearTokens();
             if (typeof window !== 'undefined') {
               window.location.href = '/auth/login';
             }
@@ -83,34 +59,6 @@ class ApiClient {
       toast.error('Network error. Please check your connection.');
     } else {
       toast.error('An unexpected error occurred');
-    }
-  }
-
-  private getAccessToken(): string | null {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('accessToken');
-    }
-    return null;
-  }
-
-  private getRefreshToken(): string | null {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('refreshToken');
-    }
-    return null;
-  }
-
-  private setAccessToken(token: string) {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('accessToken', token);
-    }
-  }
-
-  private clearTokens() {
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('refreshToken');
-      localStorage.removeItem('user');
     }
   }
 

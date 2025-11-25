@@ -100,3 +100,4 @@ logging:
     org.springframework.security: INFO
     org.springframework.web: INFO
     org.flywaydb: INFO
+cookie-domain: ${COOKIE_DOMAIN}

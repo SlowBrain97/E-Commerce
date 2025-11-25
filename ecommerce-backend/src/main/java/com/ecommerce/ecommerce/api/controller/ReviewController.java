@@ -15,8 +15,12 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/reviews")
@@ -76,6 +80,7 @@ public class ReviewController {
     }
 
     @DeleteMapping("/{reviewId}")
+    @PreAuthorize("hasRole('USER')")
     public ResponseEntity<ApiResponse<String>> deleteReview(
             @PathVariable Long reviewId,
             Authentication authentication) {
@@ -85,6 +90,7 @@ public class ReviewController {
     }
 
     @PostMapping("/{reviewId}/helpful")
+    @PreAuthorize("hasRole('USER')")
     public ResponseEntity<ApiResponse<String>> markReviewHelpful(
             @PathVariable Long reviewId,
             Authentication authentication) {
@@ -94,6 +100,7 @@ public class ReviewController {
     }
 
     @GetMapping("/user")
+    @PreAuthorize("hasRole('USER')")
     public ResponseEntity<ApiResponse<Page<ReviewResponse>>> getCurrentUserReviews(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
@@ -117,11 +124,12 @@ public class ReviewController {
     }
 
     @PutMapping("/{reviewId}/status")
+    @PreAuthorize("hasRole('USER')")
     public ResponseEntity<ApiResponse<ReviewResponse>> updateReviewStatus(
             @PathVariable Long reviewId,
             @RequestParam String status,
             Authentication authentication) {
-
+        Map<Integer,Integer> map = new LinkedHashMap<>();
         ReviewResponse response = reviewService.updateReviewStatus(reviewId, status, authentication);
         return ResponseEntity.ok(ApiResponse.success(HttpStatus.OK.value(), "Review status updated successfully", response));
     }

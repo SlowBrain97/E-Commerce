@@ -3,7 +3,7 @@ package com.ecommerce.ecommerce.core.exception;
 /**
  * Exception thrown when a requested resource is not found
  */
-public class ResourceNotFoundException extends BaseException {
+public class  ResourceNotFoundException extends BaseException {
 
     public ResourceNotFoundException(String resourceName, Object resourceId) {
         super(ErrorCode.RESOURCE_NOT_FOUND,

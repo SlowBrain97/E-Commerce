@@ -12,9 +12,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -41,19 +38,51 @@ public class UserService  {
     /**
      * Register a new user
      */
+    /**
+     * Register a new OAuth2 user
+     */
     @Transactional
-    public User registerUser(String username, String email, String password, String firstName, String lastName) {
+    public User registerOAuth2User(User user) {
+        log.info("Registering new OAuth2 user: {}", user.getEmail());
+        
+        // For OAuth2 users, we don't need a password
+        user.setPassword(null);
+        user.setProviderId(user.getProviderId());
+        user.setProvider(user.getProvider());
+        user.setIsActive(true);
+        user.setIsVerified(true);
+        user.setRole(User.Role.USER);
+        
+        return userRepository.save(user);
+    }
+    
+    /**
+     * Update existing OAuth2 user
+     */
+    @Transactional
+    public User updateOAuth2User(User existingUser, Map<String, Object> attributes) {
+        existingUser.setFirstName((String) attributes.get("given_name"));
+        existingUser.setLastName((String) attributes.get("family_name"));
+        existingUser.setAvatarUrl((String) attributes.get("picture"));
+        
+        return userRepository.save(existingUser);
+    }
+    
+    @Transactional
+    public User registerUser(String username, String email, String password, String confirmPassword, String firstName, String lastName) {
         log.info("Registering new user: {}", email);
 
         // Check if user already exists
         if (userRepository.existsByEmail(email)) {
-            throw new BusinessException(ErrorCode.DUPLICATE_ENTRY, "User with email " + email + " already exists");
+            throw new BusinessException(ErrorCode.USERNAME_OR_EMAIL_EXISTED, "User with email " + email + " already exists");
         }
 
         if (userRepository.existsByUsername(username)) {
-            throw new BusinessException(ErrorCode.DUPLICATE_ENTRY, "Username " + username + " already exists");
+            throw new BusinessException(ErrorCode.USERNAME_OR_EMAIL_EXISTED, "Username " + username + " already exists");
         }
-
+        if (!password.equals(confirmPassword)){
+            throw new BusinessException(ErrorCode.VALIDATION_FAILED, "Password and confirm password is not the same");
+        }
         User user = User.builder()
                 .username(username)
                 .email(email)
@@ -198,6 +227,10 @@ public class UserService  {
 
     public Optional<User> findByEmail(String email) {
         return userRepository.findByEmail(email);
+    }
+    
+    public Optional<User> findByProviderId(String providerId) {
+        return userRepository.findByProviderId(providerId);
     }
 
     public Optional<User> findByUsername(String username) {
